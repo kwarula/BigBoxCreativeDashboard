@@ -9,12 +9,15 @@ import dotenv from 'dotenv';
 import express from 'express';
 import { EventBus, eventBus } from './core/bus/EventBus.js';
 import { EventStore } from './core/store/EventStore.js';
+import { SOPResolver } from './core/sop/SOPResolver.js';
 import { IntakeAgent } from './agents/intake/IntakeAgent.js';
 import { MeetingAgent } from './agents/meeting/MeetingAgent.js';
 import { StrategyAgent } from './agents/strategy/StrategyAgent.js';
 import { ProjectAgent } from './agents/project/ProjectAgent.js';
 import { FinanceAgent } from './agents/finance/FinanceAgent.js';
 import { OversightAgent } from './agents/oversight/OversightAgent.js';
+import { EconomicAgent } from './agents/economic/EconomicAgent.js';
+import { AutomationCoverageAgent } from './agents/coverage/AutomationCoverageAgent.js';
 import { ClientHealthView } from './projections/client/ClientHealthView.js';
 import { Logger } from './utils/logger.js';
 import { setupEventAPI } from './api/controllers/eventController.js';
@@ -29,6 +32,7 @@ const logger = new Logger('AutonomicEngine');
 class AutonomicEngine {
   private eventBus: EventBus;
   private eventStore: EventStore;
+  private sopResolver: SOPResolver;
   private agents: Array<any>;
   private projections: Array<any>;
   private app: express.Application;
@@ -43,6 +47,7 @@ class AutonomicEngine {
       user: process.env.POSTGRES_USER || 'bigbox',
       password: process.env.POSTGRES_PASSWORD || '',
     });
+    this.sopResolver = new SOPResolver('./sops');
 
     this.agents = [];
     this.projections = [];
@@ -55,6 +60,10 @@ class AutonomicEngine {
    */
   async initialize(): Promise<void> {
     logger.info('Initializing Autonomic Engine');
+
+    // Initialize SOP definitions
+    logger.info('Loading SOP definitions');
+    await this.sopResolver.initialize();
 
     // Initialize event store
     await this.eventStore.initialize();
@@ -72,6 +81,8 @@ class AutonomicEngine {
     const strategyAgent = new StrategyAgent(this.eventBus);
     const projectAgent = new ProjectAgent(this.eventBus);
     const financeAgent = new FinanceAgent(this.eventBus);
+    const economicAgent = new EconomicAgent(this.eventBus, this.sopResolver);
+    const coverageAgent = new AutomationCoverageAgent(this.eventBus, this.sopResolver);
     const oversightAgent = new OversightAgent(this.eventBus, {
       financial_limit: parseInt(process.env.FINANCIAL_LIMIT || '10000'),
       confidence_threshold: parseFloat(process.env.CONFIDENCE_THRESHOLD || '0.75'),
@@ -84,7 +95,9 @@ class AutonomicEngine {
       strategyAgent,
       projectAgent,
       financeAgent,
-      oversightAgent,
+      economicAgent,
+      coverageAgent,
+      oversightAgent, // Oversight must be last - it monitors all others
     ];
 
     for (const agent of this.agents) {

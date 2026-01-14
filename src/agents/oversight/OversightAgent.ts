@@ -189,7 +189,24 @@ export class OversightAgent extends AutonomicAgent {
       };
     }
 
-    // Check 2: Already requires human
+    // Check 2: CEO-level interrupt required (highest priority)
+    const ceoInterrupt = await this.evaluateCEOInterrupt(event);
+    if (ceoInterrupt) {
+      await this.emitEvent(
+        'CEO_INTERRUPT_REQUIRED' as any,
+        event.entity_type,
+        event.entity_id,
+        ceoInterrupt,
+        1.0,
+        true
+      );
+      return {
+        action: 'escalate',
+        reason: `CEO interrupt required: ${ceoInterrupt.interrupt_reason}`,
+      };
+    }
+
+    // Check 3: Already requires human (but not CEO-level)
     if (event.requires_human) {
       return {
         action: 'escalate',
@@ -197,7 +214,7 @@ export class OversightAgent extends AutonomicAgent {
       };
     }
 
-    // Check 3: Financial risk
+    // Check 4: Financial risk
     if (this.isFinancialEvent(event.event_type)) {
       const amount = this.extractFinancialAmount(event);
       if (amount > this.riskThresholds.financial_limit) {
@@ -640,6 +657,142 @@ export class OversightAgent extends AutonomicAgent {
       return 'Process improving - may indicate successful optimization or shortcuts';
     }
     return 'Normal variation';
+  }
+
+  /**
+   * CEO ATTENTION OPTIMIZATION
+   * Most things should NOT interrupt the CEO
+   */
+
+  /**
+   * Evaluate if event requires CEO-level attention
+   * Returns payload if yes, null if no
+   */
+  private async evaluateCEOInterrupt(
+    event: EventEnvelope
+  ): Promise<{
+    interrupt_reason: 'financial_risk' | 'reputation_risk' | 'strategic_inflection';
+    severity: 'high' | 'critical';
+    context: Record<string, unknown>;
+    decision_required: string;
+    time_sensitive: boolean;
+    recommended_action?: string;
+  } | null> {
+    // Financial Risk (only VERY high amounts)
+    if (this.isFinancialEvent(event.event_type)) {
+      const amount = this.extractFinancialAmount(event);
+      if (amount > this.riskThresholds.financial_limit * 10) {
+        // 10x normal threshold
+        return {
+          interrupt_reason: 'financial_risk',
+          severity: 'critical',
+          context: {
+            amount,
+            event_type: event.event_type,
+            entity_id: event.entity_id,
+          },
+          decision_required: `Approve financial commitment of $${amount}`,
+          time_sensitive: true,
+          recommended_action: 'Review contract terms and client credit',
+        };
+      }
+    }
+
+    // Reputation Risk (critical severity only)
+    if (event.event_type === 'RISK_DETECTED') {
+      const riskType = event.payload.risk_type as string;
+      const severity = event.payload.severity as string;
+
+      if (riskType === 'relationship' && severity === 'critical') {
+        return {
+          interrupt_reason: 'reputation_risk',
+          severity: 'critical',
+          context: {
+            risk_description: event.payload.description,
+            client_id: event.entity_id,
+          },
+          decision_required: 'Approve crisis response strategy',
+          time_sensitive: true,
+          recommended_action: event.payload.mitigation_suggestions?.[0] as string,
+        };
+      }
+
+      if (riskType === 'legal' && severity === 'high') {
+        return {
+          interrupt_reason: 'reputation_risk',
+          severity: 'critical',
+          context: {
+            risk_description: event.payload.description,
+            affected_entity: event.entity_id,
+          },
+          decision_required: 'Approve legal strategy',
+          time_sensitive: true,
+        };
+      }
+    }
+
+    // Strategic Inflection Points
+    if (event.event_type === 'SOP_OPTIMIZATION_RECOMMENDED') {
+      const potentialSavings = event.payload.potential_savings as any;
+      if (potentialSavings?.cost_per_month > 50000) {
+        // Major process redesign
+        return {
+          interrupt_reason: 'strategic_inflection',
+          severity: 'high',
+          context: {
+            sop_id: event.payload.sop_id,
+            potential_monthly_savings: potentialSavings.cost_per_month,
+            changes: event.payload.recommended_changes,
+          },
+          decision_required: 'Approve major process redesign',
+          time_sensitive: false,
+          recommended_action: 'Review impact analysis and approve pilot',
+        };
+      }
+    }
+
+    // Client Churn Risk (high-value clients only)
+    if (event.event_type === 'CLIENT_ATTENTION_DECAY') {
+      const churnScore = event.payload.churn_risk_score as number;
+      // Would need to check if high-value client
+      if (churnScore > 0.7) {
+        return {
+          interrupt_reason: 'reputation_risk',
+          severity: 'high',
+          context: {
+            client_id: event.entity_id,
+            churn_risk_score: churnScore,
+            engagement_signals: event.payload.engagement_signals,
+          },
+          decision_required: 'Approve client retention strategy',
+          time_sensitive: true,
+          recommended_action: 'Personal outreach from CEO recommended',
+        };
+      }
+    }
+
+    // Project at Critical Risk
+    if (event.event_type === 'PROJECT_AT_RISK') {
+      const riskFactors = event.payload.risk_factors as string[];
+      if (riskFactors.length > 3) {
+        // Multiple compounding risks
+        return {
+          interrupt_reason: 'reputation_risk',
+          severity: 'high',
+          context: {
+            project_id: event.entity_id,
+            risk_factors: riskFactors,
+            recommended_actions: event.payload.recommended_actions,
+          },
+          decision_required: 'Approve project recovery plan',
+          time_sensitive: true,
+          recommended_action: 'Assign senior oversight to project',
+        };
+      }
+    }
+
+    // Default: Does NOT require CEO attention
+    return null;
   }
 
   /**
