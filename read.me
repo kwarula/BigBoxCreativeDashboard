@@ -1,0 +1,288 @@
+# THE BIG BOX AUTONOMIC ENGINE
+
+## Master System Architecture (MSA)
+
+> *“The system runs itself. Humans intervene only when the machine requests judgment.”*
+
+---
+
+## 1. CORE DESIGN PRINCIPLES (NON-NEGOTIABLE)
+
+1. **Data-Stream First**
+
+   * Every action emits an event
+   * UI never triggers logic directly
+   * UI only subscribes to state
+
+2. **Event-Sourced Reality**
+
+   * System truth = ordered event log
+   * State is always reconstructible
+
+3. **Agent-Oriented Control**
+
+   * No “features”
+   * Only agents with mandates
+
+4. **Human-in-the-Loop by Exception**
+
+   * Humans are escalation handlers
+   * Silence equals approval
+
+5. **Deterministic Automation + Probabilistic Intelligence**
+
+   * n8n = deterministic executor
+   * Gemini = probabilistic reasoning
+   * Claude Code = architectural glue
+
+---
+
+## 2. SYSTEM LAYERS (TOP-DOWN)
+
+```
+┌───────────────────────────────┐
+│           UI WINDOW            │  (Read / Approve / Override)
+└───────────────▲───────────────┘
+                │
+┌───────────────┴───────────────┐
+│        STATE PROJECTION         │  (Derived Views)
+└───────────────▲───────────────┘
+                │
+┌───────────────┴───────────────┐
+│        EVENT STREAM BUS         │  (Single Source of Truth)
+└───────────────▲───────────────┘
+                │
+┌───────────────┴───────────────┐
+│        AUTONOMIC AGENTS         │  (Gemini + Rules)
+└───────────────▲───────────────┘
+                │
+┌───────────────┴───────────────┐
+│     DETERMINISTIC EXECUTION     │  (n8n Workflows)
+└───────────────────────────────┘
+```
+
+---
+
+## 3. CANONICAL EVENT MODEL (THIS IS SACRED)
+
+Claude Code must treat **events as first-class citizens**.
+
+### Event Envelope
+
+```json
+{
+  "event_id": "uuid",
+  "event_type": "MEETING_COMPLETED",
+  "entity_type": "CLIENT",
+  "entity_id": "client_234",
+  "payload": {},
+  "confidence": 0.91,
+  "created_at": "ISO-8601",
+  "emitted_by": "ai_meeting_agent",
+  "requires_human": false
+}
+```
+
+No workflow mutates state directly.
+**State is a projection of events.**
+
+---
+
+## 4. CORE EVENT TYPES (MINIMUM SET)
+
+### Acquisition
+
+* LEAD_RECEIVED
+* LEAD_QUALIFIED
+* MEETING_SCHEDULED
+
+### Intelligence
+
+* MEETING_COMPLETED
+* INTENT_INFERRED
+* RISK_DETECTED
+
+### Execution
+
+* TASK_CREATED
+* TASK_ASSIGNED
+* TASK_COMPLETED
+* PROJECT_STARTED
+* PROJECT_AT_RISK
+
+### Financial
+
+* QUOTE_GENERATED
+* INVOICE_ISSUED
+* PAYMENT_RECEIVED
+
+### Control
+
+* HUMAN_APPROVAL_REQUESTED
+* HUMAN_OVERRIDE
+* AUTONOMIC_DECISION_EXECUTED
+
+---
+
+## 5. AUTONOMIC AGENTS (MANDATES, NOT TOOLS)
+
+Each agent:
+
+* Subscribes to events
+* Emits new events
+* Never calls UI
+* Never mutates state directly
+
+---
+
+### 5.1 AI Intake Agent
+
+**Subscribes to**
+
+* LEAD_RECEIVED
+
+**Emits**
+
+* LEAD_QUALIFIED
+* MEETING_SCHEDULED
+
+**Failure Mode**
+
+* Low confidence → HUMAN_APPROVAL_REQUESTED
+
+---
+
+### 5.2 AI Meeting Intelligence Agent
+
+**Subscribes to**
+
+* MEETING_COMPLETED
+
+**Emits**
+
+* INTENT_INFERRED
+* TASK_CREATED
+* RISK_DETECTED
+
+---
+
+### 5.3 AI Strategy Agent
+
+**Subscribes to**
+
+* INTENT_INFERRED
+
+**Emits**
+
+* CREATIVE_BRIEF_GENERATED
+* PROJECT_RECOMMENDED
+
+---
+
+### 5.4 AI Project Control Agent
+
+**Subscribes to**
+
+* TASK_CREATED
+* PROJECT_STARTED
+
+**Emits**
+
+* TASK_ASSIGNED
+* PROJECT_AT_RISK
+
+---
+
+### 5.5 AI Finance Agent
+
+**Subscribes to**
+
+* QUOTE_APPROVED
+* PROJECT_STARTED
+
+**Emits**
+
+* INVOICE_ISSUED
+* PAYMENT_REMINDER_SENT
+
+---
+
+### 5.6 AI Oversight Agent (The Governor)
+
+**Subscribes to EVERYTHING**
+
+**Emits**
+
+* HUMAN_APPROVAL_REQUESTED
+* AUTONOMIC_DECISION_EXECUTED
+
+This is the safety valve.
+
+---
+
+## 6. n8n AS THE AUTONOMIC SPINAL CORD
+
+n8n **never thinks**.
+It **executes with certainty**.
+
+### Responsibilities
+
+* Event routing
+* Timers
+* Escalations
+* External API calls
+* Notifications
+
+Each workflow:
+
+* Starts with an event
+* Ends by emitting events
+
+No branching logic belongs in UI.
+
+---
+
+## 7. STATE PROJECTIONS (WHAT THE UI SEES)
+
+State = Read-only materialized views.
+
+Examples:
+
+* Client Health View
+* Project Timeline View
+* Task Load View
+* Cashflow Forecast View
+
+If UI disappears, **the system continues functioning**.
+
+---
+
+## 8. HUMAN INTERVENTION PROTOCOL
+
+Human work is **interrupt-driven**.
+
+Trigger conditions:
+
+* Low confidence (<0.75)
+* High financial risk
+* Brand reputation risk
+* Legal ambiguity
+
+Human actions:
+
+* Approve
+* Modify
+* Reject
+
+Human responses emit **HUMAN_OVERRIDE** events.
+
+---
+
+## 9. CLAUDE CODE: MASTER DIRECTIVE
+
+
+> You are building an event-sourced autonomic system.
+> No component may assume synchronous UI control.
+> All logic must subscribe to events and emit events.
+> State is derived, never mutated.”
+
