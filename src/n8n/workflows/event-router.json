@@ -1,0 +1,126 @@
+{
+  "name": "Event Router",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "event",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Event Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract event data\nconst event = $input.item.json;\n\n// Route based on event type\nreturn {\n  json: {\n    event_id: event.event_id,\n    event_type: event.event_type,\n    entity_type: event.entity_type,\n    entity_id: event.entity_id,\n    requires_human: event.requires_human,\n    route: event.requires_human ? 'human_approval' : 'automated'\n  }\n};"
+      },
+      "id": "route-event",
+      "name": "Route Event",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.route}}",
+              "value2": "human_approval"
+            }
+          ]
+        }
+      },
+      "id": "check-route",
+      "name": "Check Route",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.NOTIFICATION_SERVICE_URL}}/notify",
+        "method": "POST",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_id",
+              "value": "={{$json.event_id}}"
+            },
+            {
+              "name": "event_type",
+              "value": "={{$json.event_type}}"
+            },
+            {
+              "name": "notification_type",
+              "value": "human_approval_required"
+            }
+          ]
+        }
+      },
+      "id": "notify-human",
+      "name": "Notify Human",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [850, 200]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Log automated event\nreturn {\n  json: {\n    message: 'Event processed automatically',\n    event_id: $input.item.json.event_id\n  }\n};"
+      },
+      "id": "log-automated",
+      "name": "Log Automated",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 400]
+    }
+  ],
+  "connections": {
+    "Event Webhook": {
+      "main": [
+        [
+          {
+            "node": "Route Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Event": {
+      "main": [
+        [
+          {
+            "node": "Check Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Route": {
+      "main": [
+        [
+          {
+            "node": "Notify Human",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Automated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
