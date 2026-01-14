@@ -41,11 +41,8 @@ class AutonomicEngine {
   constructor() {
     this.eventBus = eventBus;
     this.eventStore = new EventStore({
-      host: process.env.POSTGRES_HOST || 'localhost',
-      port: parseInt(process.env.POSTGRES_PORT || '5432'),
-      database: process.env.POSTGRES_DB || 'bigbox_autonomic',
-      user: process.env.POSTGRES_USER || 'bigbox',
-      password: process.env.POSTGRES_PASSWORD || '',
+      supabaseUrl: process.env.SUPABASE_URL || '',
+      supabaseKey: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
     });
     this.sopResolver = new SOPResolver('./sops');
 
