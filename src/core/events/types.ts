@@ -70,6 +70,29 @@ export enum ControlEventType {
 }
 
 /**
+ * Core Event Types - Economic Intelligence
+ */
+export enum EconomicEventType {
+  SOP_EXECUTION_COMPLETED = 'SOP_EXECUTION_COMPLETED',
+  SOP_OPTIMIZATION_RECOMMENDED = 'SOP_OPTIMIZATION_RECOMMENDED',
+  AUTOMATION_OPPORTUNITY_DETECTED = 'AUTOMATION_OPPORTUNITY_DETECTED',
+  MARGIN_EROSION_DETECTED = 'MARGIN_EROSION_DETECTED',
+  AUTOMATION_ROI_CALCULATED = 'AUTOMATION_ROI_CALCULATED',
+}
+
+/**
+ * Core Event Types - Drift Detection
+ */
+export enum DriftEventType {
+  PROCESS_DRIFT_DETECTED = 'PROCESS_DRIFT_DETECTED',
+  HUMAN_FATIGUE_SIGNAL = 'HUMAN_FATIGUE_SIGNAL',
+  CLIENT_ATTENTION_DECAY = 'CLIENT_ATTENTION_DECAY',
+  CONFIDENCE_CALIBRATION_REQUIRED = 'CONFIDENCE_CALIBRATION_REQUIRED',
+  AUTOMATION_GAP_FOUND = 'AUTOMATION_GAP_FOUND',
+  CEO_INTERRUPT_REQUIRED = 'CEO_INTERRUPT_REQUIRED',
+}
+
+/**
  * Union of all event types
  */
 export type EventType =
@@ -77,7 +100,9 @@ export type EventType =
   | IntelligenceEventType
   | ExecutionEventType
   | FinancialEventType
-  | ControlEventType;
+  | ControlEventType
+  | EconomicEventType
+  | DriftEventType;
 
 /**
  * Event Emitter Sources
@@ -89,6 +114,7 @@ export enum EventEmitter {
   AI_PROJECT_AGENT = 'ai_project_agent',
   AI_FINANCE_AGENT = 'ai_finance_agent',
   AI_OVERSIGHT_AGENT = 'ai_oversight_agent',
+  AI_ECONOMIC_AGENT = 'ai_economic_agent',
   N8N_WORKFLOW = 'n8n_workflow',
   HUMAN_USER = 'human_user',
   SYSTEM = 'system',
@@ -294,6 +320,146 @@ export interface AutonomicDecisionExecutedPayload {
     entity_type: EntityType;
     entity_id: string;
   }>;
+}
+
+// Economic Events
+export interface SOPExecutionCompletedPayload {
+  sop_id: string;
+  execution_id: string;
+  cycle_time_hours: number;
+  automation_rate: number;
+  human_minutes: number;
+  cost: number;
+  quality_score?: number;
+  deviations: Array<{
+    step_id: string;
+    deviation_type: string;
+    description: string;
+  }>;
+}
+
+export interface SOPOptimizationRecommendedPayload {
+  sop_id: string;
+  current_metrics: {
+    automation_rate: number;
+    cycle_time_hours: number;
+    cost_per_execution: number;
+  };
+  recommended_changes: Array<{
+    step_id: string;
+    change_type: 'automate' | 'remove' | 'simplify' | 'reorder';
+    expected_impact: string;
+    confidence: number;
+  }>;
+  potential_savings: {
+    time_hours_per_month: number;
+    cost_per_month: number;
+  };
+}
+
+export interface AutomationOpportunityDetectedPayload {
+  manual_task_pattern: string;
+  frequency_per_month: number;
+  average_duration_minutes: number;
+  total_monthly_cost: number;
+  automation_feasibility: number;
+  recommended_approach: string;
+  roi_months: number;
+}
+
+export interface MarginErosionDetectedPayload {
+  project_id: string;
+  budgeted_hours: number;
+  actual_hours: number;
+  variance_percentage: number;
+  causes: string[];
+  recommended_actions: string[];
+}
+
+export interface AutomationROICalculatedPayload {
+  period_start: string;
+  period_end: string;
+  total_automated_tasks: number;
+  human_hours_saved: number;
+  cost_savings: number;
+  automation_investment: number;
+  roi_percentage: number;
+  top_performing_sops: Array<{
+    sop_id: string;
+    hours_saved: number;
+    cost_saved: number;
+  }>;
+}
+
+// Drift Events
+export interface ProcessDriftDetectedPayload {
+  sop_id: string;
+  drift_type: 'timing' | 'quality' | 'cost' | 'human_intervention';
+  baseline_metric: number;
+  current_metric: number;
+  drift_percentage: number;
+  trend: 'increasing' | 'decreasing' | 'volatile';
+  duration_days: number;
+  root_cause_hypothesis: string;
+}
+
+export interface HumanFatigueSignalPayload {
+  user_id: string;
+  fatigue_indicators: Array<{
+    indicator: string;
+    severity: 'low' | 'medium' | 'high';
+  }>;
+  override_frequency: number;
+  manual_task_increase: number;
+  recommended_actions: string[];
+}
+
+export interface ClientAttentionDecayPayload {
+  client_id: string;
+  response_time_trend: {
+    baseline_hours: number;
+    current_hours: number;
+    increase_percentage: number;
+  };
+  engagement_signals: {
+    meeting_attendance: number;
+    email_responsiveness: number;
+    feedback_quality: number;
+  };
+  churn_risk_score: number;
+  recommended_interventions: string[];
+}
+
+export interface ConfidenceCalibrationRequiredPayload {
+  agent_id: string;
+  period_start: string;
+  period_end: string;
+  confidence_distribution: {
+    always_high: number;
+    always_low: number;
+    well_calibrated: number;
+  };
+  calibration_score: number;
+  recommended_adjustments: string[];
+}
+
+export interface AutomationGapFoundPayload {
+  gap_type: 'manual_task' | 'human_override' | 'unstructured_process';
+  task_description: string;
+  frequency_per_week: number;
+  time_per_occurrence_minutes: number;
+  total_weekly_cost: number;
+  automation_potential: number;
+  blockers: string[];
+}
+
+export interface CEOInterruptRequiredPayload {
+  interrupt_reason: 'financial_risk' | 'reputation_risk' | 'strategic_inflection';
+  severity: 'high' | 'critical';
+  context: Record<string, unknown>;
+  decision_required: string;
+  time_sensitive: boolean;
+  recommended_action?: string;
 }
 
 /**

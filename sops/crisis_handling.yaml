@@ -1,0 +1,197 @@
+metadata:
+  id: sop_crisis_handling_v1
+  name: Crisis and Reputation Management
+  version: "1.0.0"
+  owner: AI Oversight Agent
+  created_at: "2025-01-14T00:00:00Z"
+  updated_at: "2025-01-14T00:00:00Z"
+  status: active
+  tags:
+    - crisis_management
+    - reputation
+    - zero_automation
+
+preconditions:
+  required_events:
+    - RISK_DETECTED
+  entity_types:
+    - CLIENT
+    - PROJECT
+  custom_conditions:
+    severity: critical
+
+steps:
+  - step_id: crisis_detection
+    name: Detect Crisis Indicators
+    description: AI identifies potential reputation or legal risks
+    automation_level: full
+    responsible_agent: ai_oversight_agent
+    requires_human: false
+    timeout_hours: 0.5
+    actions:
+      - type: decision
+        config:
+          crisis_indicators:
+            - negative_media_mention
+            - legal_threat
+            - client_escalation
+            - social_media_backlash
+            - safety_incident
+      - type: emit_event
+        config:
+          event_type: HUMAN_APPROVAL_REQUESTED
+          urgency: critical
+
+  - step_id: immediate_notification
+    name: Alert Crisis Team
+    description: Notify all crisis stakeholders immediately
+    automation_level: full
+    responsible_agent: ai_oversight_agent
+    requires_human: false
+    timeout_hours: 0.1
+    dependencies:
+      - crisis_detection
+    actions:
+      - type: notification
+        config:
+          channels:
+            - sms
+            - phone
+            - email
+            - slack
+          urgency: critical
+          recipients:
+            - ceo
+            - operations_director
+            - legal_counsel
+            - account_manager
+
+  - step_id: human_assessment
+    name: Human Crisis Assessment
+    description: Leadership assesses situation and decides response
+    automation_level: manual
+    requires_human: true
+    timeout_hours: 1
+    dependencies:
+      - immediate_notification
+    actions:
+      - type: notification
+        config:
+          channels:
+            - dashboard
+          include_full_context: true
+          include_ai_analysis: true
+
+  - step_id: response_execution
+    name: Execute Crisis Response
+    description: Human-led crisis response execution
+    automation_level: manual
+    requires_human: true
+    timeout_hours: 24
+    dependencies:
+      - human_assessment
+
+  - step_id: monitoring
+    name: Continuous Situation Monitoring
+    description: AI tracks crisis evolution and sentiment
+    automation_level: full
+    responsible_agent: ai_oversight_agent
+    requires_human: false
+    timeout_hours: 168
+    dependencies:
+      - response_execution
+    actions:
+      - type: decision
+        config:
+          monitoring:
+            - media_sentiment
+            - social_media_mentions
+            - client_communications
+            - legal_developments
+      - type: notification
+        config:
+          channels:
+            - email
+            - slack
+          frequency_hours: 4
+          recipients:
+            - crisis_team
+
+  - step_id: post_crisis_analysis
+    name: Post-Crisis Review and Learning
+    description: Document learnings and update SOPs
+    automation_level: assisted
+    responsible_agent: ai_oversight_agent
+    requires_human: true
+    timeout_hours: 72
+    dependencies:
+      - monitoring
+    actions:
+      - type: decision
+        config:
+          gemini_synthesis:
+            - root_cause
+            - response_effectiveness
+            - process_gaps
+            - sop_improvements
+      - type: emit_event
+        config:
+          event_type: SOP_OPTIMIZATION_RECOMMENDED
+
+automation_policy:
+  allowed_automations:
+    - crisis_detection
+    - stakeholder_notification
+    - situation_monitoring
+    - sentiment_analysis
+  forbidden_actions:
+    - public_statements
+    - legal_commitments
+    - client_communications
+    - media_responses
+  confidence_threshold: 1.0
+  financial_limit: 0
+  require_dual_approval: true
+
+escalation_rules:
+  - trigger: manual_request
+    escalate_to:
+      - ceo
+      - board_of_directors
+    urgency: critical
+    notification_channels:
+      - phone
+      - sms
+      - email
+    include_context: true
+
+  - trigger: timeout
+    threshold: 1
+    escalate_to:
+      - ceo
+      - board_chair
+    urgency: critical
+    notification_channels:
+      - phone
+      - sms
+    include_context: true
+
+metrics:
+  cycle_time_target_hours: 24
+  automation_rate_target: 0.15
+  error_rate_threshold: 0.00
+  human_minutes_target: 480
+  quality_metrics:
+    - response_time_minutes
+    - reputation_recovery_score
+    - media_sentiment_delta
+
+compliance_requirements:
+  - Legal review mandatory
+  - Documentation retention
+  - Privacy protection
+  - Insurance notification
+
+related_sops:
+  - sop_legal_review_v1
+  - sop_media_relations_v1
