@@ -1,0 +1,124 @@
+{
+  "name": "Payment Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Daily at 9 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.ENGINE_API_URL}}/api/events/query",
+        "method": "POST",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_types",
+              "value": "[\"INVOICE_ISSUED\"]"
+            },
+            {
+              "name": "requires_action",
+              "value": "true"
+            }
+          ]
+        }
+      },
+      "id": "fetch-overdue",
+      "name": "Fetch Overdue Invoices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Filter invoices that are overdue\nconst now = new Date();\nconst overdueInvoices = [];\n\nfor (const item of $input.all()) {\n  const dueDate = new Date(item.json.payload.due_date);\n  const daysPastDue = Math.floor((now - dueDate) / (1000 * 60 * 60 * 24));\n  \n  if (daysPastDue > 0) {\n    overdueInvoices.push({\n      json: {\n        ...item.json,\n        days_past_due: daysPastDue\n      }\n    });\n  }\n}\n\nreturn overdueInvoices;"
+      },
+      "id": "filter-overdue",
+      "name": "Filter Overdue",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$env.ENGINE_API_URL}}/api/events",
+        "method": "POST",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "event_type",
+              "value": "PAYMENT_REMINDER_SENT"
+            },
+            {
+              "name": "entity_type",
+              "value": "INVOICE"
+            },
+            {
+              "name": "entity_id",
+              "value": "={{$json.entity_id}}"
+            },
+            {
+              "name": "payload",
+              "value": "={{JSON.stringify({invoice_id: $json.entity_id, days_past_due: $json.days_past_due})}}"
+            }
+          ]
+        }
+      },
+      "id": "emit-reminder",
+      "name": "Emit Reminder Event",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [850, 300]
+    }
+  ],
+  "connections": {
+    "Daily at 9 AM": {
+      "main": [
+        [
+          {
+            "node": "Fetch Overdue Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Overdue Invoices": {
+      "main": [
+        [
+          {
+            "node": "Filter Overdue",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Overdue": {
+      "main": [
+        [
+          {
+            "node": "Emit Reminder Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

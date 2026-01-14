@@ -1,0 +1,184 @@
+metadata:
+  id: sop_lead_intake_v1
+  name: Lead Intake and Qualification
+  version: "1.0.0"
+  owner: AI Intake Agent
+  created_at: "2025-01-14T00:00:00Z"
+  updated_at: "2025-01-14T00:00:00Z"
+  status: active
+  tags:
+    - acquisition
+    - lead_qualification
+    - automation_priority_high
+
+preconditions:
+  required_events:
+    - LEAD_RECEIVED
+  entity_types:
+    - LEAD
+  client_tier: all
+  service_type:
+    - brand_identity
+    - web_design
+    - content_creation
+    - event_activation
+    - integrated_campaign
+
+steps:
+  - step_id: validate_lead_data
+    name: Validate Lead Data Completeness
+    description: Ensure all required fields are present and valid
+    automation_level: full
+    responsible_agent: ai_intake_agent
+    requires_human: false
+    timeout_hours: 0.25
+    actions:
+      - type: decision
+        config:
+          check_fields:
+            - contact_email
+            - contact_name
+            - initial_message
+          validation_rules:
+            email_format: regex
+            message_min_length: 20
+
+  - step_id: qualify_lead
+    name: AI-Powered Lead Qualification
+    description: Analyze lead quality, budget signals, urgency, and fit
+    automation_level: full
+    responsible_agent: ai_intake_agent
+    requires_human: false
+    timeout_hours: 1
+    dependencies:
+      - validate_lead_data
+    actions:
+      - type: decision
+        config:
+          gemini_analysis:
+            - budget_inference
+            - urgency_detection
+            - service_fit_scoring
+            - red_flag_detection
+      - type: emit_event
+        config:
+          event_type: LEAD_QUALIFIED
+          confidence_threshold: 0.75
+    success_criteria:
+      qualification_score: ">= 50"
+    failure_handling:
+      retry_count: 1
+      escalate_to_human: true
+      fallback_step: manual_qualification
+
+  - step_id: schedule_discovery_call
+    name: Auto-Schedule Discovery Call
+    description: Book discovery call if qualification score >= 70
+    automation_level: assisted
+    responsible_agent: ai_intake_agent
+    requires_human: false
+    timeout_hours: 2
+    dependencies:
+      - qualify_lead
+    actions:
+      - type: external_api
+        config:
+          api: calendar_booking
+          params:
+            meeting_type: discovery
+            duration_minutes: 30
+            availability_check: true
+      - type: emit_event
+        config:
+          event_type: MEETING_SCHEDULED
+      - type: notification
+        config:
+          channels:
+            - email
+          template: discovery_call_confirmation
+    failure_handling:
+      retry_count: 2
+      escalate_to_human: true
+
+  - step_id: manual_qualification
+    name: Manual Lead Review
+    description: Human qualifies lead when AI confidence is low
+    automation_level: manual
+    requires_human: true
+    timeout_hours: 24
+    dependencies:
+      - qualify_lead
+    actions:
+      - type: notification
+        config:
+          channels:
+            - dashboard
+            - email
+          urgency: medium
+          include_ai_analysis: true
+
+automation_policy:
+  allowed_automations:
+    - lead_validation
+    - qualification_scoring
+    - calendar_booking
+    - email_notifications
+  forbidden_actions:
+    - commit_pricing
+    - sign_contracts
+    - make_legal_promises
+  confidence_threshold: 0.75
+  financial_limit: 0
+  require_dual_approval: false
+  time_restrictions:
+    business_hours_only: false
+
+escalation_rules:
+  - trigger: low_confidence
+    threshold: 0.75
+    escalate_to:
+      - sales_manager
+    urgency: medium
+    notification_channels:
+      - email
+      - dashboard
+    include_context: true
+
+  - trigger: timeout
+    threshold: 24
+    escalate_to:
+      - sales_manager
+      - operations_manager
+    urgency: high
+    notification_channels:
+      - email
+      - slack
+    include_context: true
+
+  - trigger: error
+    escalate_to:
+      - technical_lead
+    urgency: high
+    notification_channels:
+      - slack
+    include_context: true
+
+metrics:
+  cycle_time_target_hours: 4
+  automation_rate_target: 0.85
+  error_rate_threshold: 0.05
+  human_minutes_target: 5
+  cost_per_execution_target: 2.50
+  quality_metrics:
+    - qualification_accuracy
+    - no_show_rate
+    - conversion_to_meeting
+
+compliance_requirements:
+  - GDPR data handling
+  - CAN-SPAM email compliance
+  - Data retention policy
+
+related_sops:
+  - sop_discovery_meeting_v1
+  - sop_quote_generation_v1

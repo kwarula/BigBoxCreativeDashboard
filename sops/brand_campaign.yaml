@@ -1,0 +1,244 @@
+metadata:
+  id: sop_brand_campaign_v1
+  name: Brand Identity Campaign
+  version: "1.0.0"
+  owner: AI Strategy Agent
+  created_at: "2025-01-14T00:00:00Z"
+  updated_at: "2025-01-14T00:00:00Z"
+  status: active
+  tags:
+    - service_delivery
+    - brand_identity
+    - high_value
+
+preconditions:
+  required_events:
+    - PROJECT_STARTED
+    - INTENT_INFERRED
+  entity_types:
+    - PROJECT
+  service_type:
+    - brand_identity
+    - integrated_campaign
+  budget_range:
+    min: 15000
+    max: 500000
+
+steps:
+  - step_id: discovery_synthesis
+    name: Synthesize Discovery Findings
+    description: Aggregate meeting notes, client materials, research
+    automation_level: assisted
+    responsible_agent: ai_strategy_agent
+    requires_human: false
+    timeout_hours: 24
+    actions:
+      - type: decision
+        config:
+          gemini_synthesis:
+            - brand_positioning
+            - target_audience
+            - competitive_landscape
+            - brand_values
+      - type: emit_event
+        config:
+          event_type: CREATIVE_BRIEF_GENERATED
+
+  - step_id: creative_brief_review
+    name: Creative Director Reviews Brief
+    description: Human validates AI-generated creative brief
+    automation_level: manual
+    requires_human: true
+    timeout_hours: 48
+    dependencies:
+      - discovery_synthesis
+    actions:
+      - type: notification
+        config:
+          channels:
+            - dashboard
+            - email
+          urgency: high
+          assignee: creative_director
+
+  - step_id: concept_development
+    name: Develop Brand Concepts
+    description: Create 2-3 brand direction concepts
+    automation_level: manual
+    requires_human: true
+    timeout_hours: 120
+    dependencies:
+      - creative_brief_review
+    actions:
+      - type: emit_event
+        config:
+          event_type: TASK_CREATED
+          payload:
+            task_type: concept_design
+            deliverables:
+              - mood_boards
+              - typography_exploration
+              - color_palette_options
+
+  - step_id: client_presentation
+    name: Present Concepts to Client
+    description: Schedule and conduct concept presentation
+    automation_level: assisted
+    responsible_agent: ai_meeting_agent
+    requires_human: true
+    timeout_hours: 168
+    dependencies:
+      - concept_development
+    actions:
+      - type: external_api
+        config:
+          api: calendar_booking
+          params:
+            meeting_type: presentation
+            duration_minutes: 90
+      - type: notification
+        config:
+          channels:
+            - email
+          template: presentation_invitation
+
+  - step_id: feedback_synthesis
+    name: Synthesize Client Feedback
+    description: AI analyzes meeting feedback and client comments
+    automation_level: full
+    responsible_agent: ai_meeting_agent
+    requires_human: false
+    timeout_hours: 4
+    dependencies:
+      - client_presentation
+    actions:
+      - type: decision
+        config:
+          gemini_analysis:
+            - selected_direction
+            - revision_requests
+            - approval_status
+      - type: emit_event
+        config:
+          event_type: TASK_CREATED
+
+  - step_id: brand_refinement
+    name: Refine Selected Direction
+    description: Iterate on chosen brand direction
+    automation_level: manual
+    requires_human: true
+    timeout_hours: 80
+    dependencies:
+      - feedback_synthesis
+
+  - step_id: final_approval
+    name: Client Final Approval
+    description: Get sign-off on final brand assets
+    automation_level: assisted
+    requires_human: true
+    timeout_hours: 48
+    dependencies:
+      - brand_refinement
+    actions:
+      - type: notification
+        config:
+          channels:
+            - email
+          template: final_approval_request
+      - type: emit_event
+        config:
+          event_type: PROJECT_MILESTONE_COMPLETED
+
+  - step_id: asset_delivery
+    name: Deliver Brand Asset Package
+    description: Package and deliver all brand files
+    automation_level: full
+    responsible_agent: ai_project_agent
+    requires_human: false
+    timeout_hours: 16
+    dependencies:
+      - final_approval
+    actions:
+      - type: external_api
+        config:
+          api: file_delivery
+          params:
+            formats:
+              - ai
+              - eps
+              - png
+              - pdf
+            include_guidelines: true
+      - type: emit_event
+        config:
+          event_type: PROJECT_COMPLETED
+
+automation_policy:
+  allowed_automations:
+    - discovery_synthesis
+    - feedback_analysis
+    - meeting_scheduling
+    - file_delivery
+    - status_notifications
+  forbidden_actions:
+    - approve_creative_on_behalf_of_client
+    - make_creative_decisions
+    - commit_to_scope_changes
+  confidence_threshold: 0.80
+  financial_limit: 5000
+  require_dual_approval: true
+  time_restrictions:
+    business_hours_only: true
+
+escalation_rules:
+  - trigger: timeout
+    threshold: 48
+    escalate_to:
+      - creative_director
+      - account_manager
+    urgency: high
+    notification_channels:
+      - email
+      - slack
+    include_context: true
+
+  - trigger: policy_violation
+    escalate_to:
+      - creative_director
+      - ceo
+    urgency: critical
+    notification_channels:
+      - email
+      - sms
+      - slack
+    include_context: true
+
+  - trigger: low_confidence
+    threshold: 0.80
+    escalate_to:
+      - creative_director
+    urgency: medium
+    notification_channels:
+      - dashboard
+    include_context: true
+
+metrics:
+  cycle_time_target_hours: 480
+  automation_rate_target: 0.35
+  error_rate_threshold: 0.02
+  human_minutes_target: 2400
+  cost_per_execution_target: 1500
+  quality_metrics:
+    - client_satisfaction_score
+    - revision_rounds
+    - on_time_delivery
+
+compliance_requirements:
+  - Client IP assignment
+  - NDA enforcement
+  - File archival requirements
+
+related_sops:
+  - sop_discovery_meeting_v1
+  - sop_client_presentation_v1
+  - sop_project_closeout_v1

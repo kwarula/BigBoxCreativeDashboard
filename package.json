@@ -1,0 +1,49 @@
+{
+  "name": "bigbox-autonomic-engine",
+  "version": "1.0.0",
+  "description": "Event-sourced autonomic system for creative agency operations",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "keywords": [
+    "event-sourcing",
+    "autonomic-system",
+    "agents",
+    "n8n"
+  ],
+  "author": "BigBox Creative",
+  "license": "MIT",
+  "dependencies": {
+    "uuid": "^10.0.0",
+    "zod": "^3.22.4",
+    "pg": "^8.11.3",
+    "redis": "^4.6.12",
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1",
+    "pino": "^8.17.2",
+    "date-fns": "^3.0.6"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.6",
+    "@types/express": "^4.17.21",
+    "@types/uuid": "^9.0.7",
+    "@types/pg": "^8.10.9",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "vitest": "^1.1.0",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/parser": "^6.17.0",
+    "@typescript-eslint/eslint-plugin": "^6.17.0",
+    "prettier": "^3.1.1"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
