@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { StatCard } from '@/components/dashboard/stat-card'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useWebSocket } from '@/hooks/useWebSocket'
+import { createClient } from '@/lib/supabase'
 import {
     Users,
     FolderKanban,
@@ -31,6 +32,8 @@ export default function CEODashboard() {
     const [health, setHealth] = useState<SystemHealth | null>(null)
     const [recentEvents, setRecentEvents] = useState<RecentEvent[]>([])
     const [connected, setConnected] = useState(false)
+    const [counts, setCounts] = useState({ clients: 0, projects: 0 })
+    const supabase = createClient()
 
     useWebSocket({
         onConnect: () => setConnected(true),
@@ -41,10 +44,29 @@ export default function CEODashboard() {
     })
 
     useEffect(() => {
+        // Fetch health
         fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/health`)
             .then((res) => res.json())
             .then(setHealth)
             .catch(console.error)
+
+        // Fetch real counts from Supabase
+        const fetchCounts = async () => {
+            const { count: clientCount } = await supabase
+                .from('clients')
+                .select('*', { count: 'exact', head: true })
+
+            const { count: projectCount } = await supabase
+                .from('projects')
+                .select('*', { count: 'exact', head: true })
+
+            setCounts({
+                clients: clientCount || 0,
+                projects: projectCount || 0
+            })
+        }
+
+        fetchCounts()
     }, [])
 
     const activeAgents = health?.agents.filter((a) => a.active).length || 0
@@ -75,16 +97,15 @@ export default function CEODashboard() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard
                     title="Active Clients"
-                    value="12"
-                    description="+2 this month"
+                    value={counts.clients.toString()}
+                    description="Real-time from database"
                     icon={Users}
-                    trend={{ value: 20, isPositive: true }}
                     className="bg-zinc-900 border-zinc-800 text-white"
                 />
                 <StatCard
                     title="Active Projects"
-                    value="24"
-                    description="8 completing this week"
+                    value={counts.projects.toString()}
+                    description="Real-time from database"
                     icon={FolderKanban}
                     className="bg-zinc-900 border-zinc-800 text-white"
                 />
@@ -125,8 +146,8 @@ export default function CEODashboard() {
                                     <span className="text-sm text-zinc-300">{agent.name}</span>
                                     <span
                                         className={`rounded-full px-2 py-0.5 text-xs font-medium ${agent.active
-                                                ? 'bg-green-500/20 text-green-400'
-                                                : 'bg-red-500/20 text-red-400'
+                                            ? 'bg-green-500/20 text-green-400'
+                                            : 'bg-red-500/20 text-red-400'
                                             }`}
                                     >
                                         {agent.active ? 'Active' : 'Inactive'}

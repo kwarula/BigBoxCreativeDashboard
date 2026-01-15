@@ -1,205 +1,116 @@
 'use client'
 
-import { use } from 'react'
+import { use, useState, useEffect } from 'react'
+import { createClient } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import {
-    CheckCircle2,
-    Circle,
-    Clock,
-    Download,
-    FileText,
-    Calendar,
-} from 'lucide-react'
+import { ArrowRight, Download, FileText, Calendar } from 'lucide-react'
+import Link from 'next/link'
 
-// Mock data - in production, fetch from API using the token
-const mockProject = {
-    name: 'Brand Identity Refresh',
-    client: 'Acme Corporation',
-    status: 'in_progress',
-    progress: 65,
-    start_date: '2026-01-01',
-    end_date: '2026-02-15',
-    milestones: [
-        { id: 1, name: 'Discovery & Research', status: 'completed', date: '2026-01-05' },
-        { id: 2, name: 'Strategy Development', status: 'completed', date: '2026-01-10' },
-        { id: 3, name: 'Creative Concepts', status: 'in_progress', date: '2026-01-20' },
-        { id: 4, name: 'Design Refinement', status: 'pending', date: '2026-01-30' },
-        { id: 5, name: 'Final Delivery', status: 'pending', date: '2026-02-15' },
-    ],
-    deliverables: [
-        { id: 1, name: 'Brand Guidelines PDF', status: 'ready', size: '2.4 MB' },
-        { id: 2, name: 'Logo Package', status: 'ready', size: '8.1 MB' },
-        { id: 3, name: 'Social Media Kit', status: 'pending', size: null },
-    ],
-    invoices: [
-        { id: 1, number: 'INV-2026-001', amount: 5000, status: 'paid', date: '2026-01-01' },
-        { id: 2, number: 'INV-2026-002', amount: 7500, status: 'pending', date: '2026-01-15' },
-    ],
+interface Project {
+    id: string
+    name: string
+    progress: number
+    end_date: string
 }
 
-export default function ClientPortalPage({
+export default function ClientOverviewPage({
     params,
 }: {
     params: Promise<{ token: string }>
 }) {
     const { token } = use(params)
+    const [project, setProject] = useState<Project | null>(null)
+    const [loading, setLoading] = useState(true)
+    const supabase = createClient()
 
-    // In production: validate token and fetch project data
-    const project = mockProject
+    useEffect(() => {
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+        if (!uuidRegex.test(token)) {
+            setLoading(false)
+            return
+        }
+
+        const fetchProject = async () => {
+            const { data } = await supabase
+                .from('projects')
+                .select('*')
+                .eq('id', token)
+                .single()
+
+            if (data) setProject(data)
+            setLoading(false)
+        }
+
+        fetchProject()
+    }, [token])
+
+    if (loading) return null
+    if (!project) return null
 
     return (
-        <div className="space-y-8">
-            {/* Project Header */}
-            <div className="rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 p-8 text-white">
-                <p className="text-sm font-medium text-emerald-100">Welcome back,</p>
-                <h1 className="mt-1 text-3xl font-bold">{project.client}</h1>
-                <div className="mt-4 flex items-center gap-6">
-                    <div>
-                        <p className="text-sm text-emerald-100">Project</p>
-                        <p className="font-medium">{project.name}</p>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            {/* Status Summary */}
+            <Card className="lg:col-span-2 shadow-sm">
+                <CardHeader>
+                    <CardTitle className="text-xl">Project Health</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                            <span className="text-zinc-500">Overall Progress</span>
+                            <span className="font-bold text-emerald-600">{project.progress}%</span>
+                        </div>
+                        <div className="h-3 w-full rounded-full bg-zinc-100 dark:bg-zinc-800">
+                            <div
+                                className="h-full rounded-full bg-emerald-500 shadow-sm"
+                                style={{ width: `${project.progress}%` }}
+                            />
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-sm text-emerald-100">Progress</p>
-                        <p className="font-medium">{project.progress}%</p>
+                    <div className="flex items-center gap-4 text-sm">
+                        <div className="rounded-lg bg-zinc-50 p-3 flex-1 dark:bg-zinc-900">
+                            <p className="text-zinc-500">Estimated Completion</p>
+                            <p className="font-bold">{project.end_date || 'TBD'}</p>
+                        </div>
+                        <div className="rounded-lg bg-zinc-50 p-3 flex-1 dark:bg-zinc-900">
+                            <p className="text-zinc-500">Project Status</p>
+                            <p className="font-bold uppercase text-emerald-600">Active</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-sm text-emerald-100">Completion</p>
-                        <p className="font-medium">{project.end_date}</p>
-                    </div>
-                </div>
-                {/* Progress Bar */}
-                <div className="mt-6">
-                    <div className="h-2 overflow-hidden rounded-full bg-white/20">
-                        <div
-                            className="h-full rounded-full bg-white transition-all"
-                            style={{ width: `${project.progress}%` }}
-                        />
-                    </div>
-                </div>
-            </div>
+                </CardContent>
+            </Card>
 
-            {/* Main Grid */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-                {/* Timeline */}
-                <Card className="lg:col-span-2">
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
+            {/* Quick Links */}
+            <Link href={`/client/${token}/timeline`}>
+                <Card className="hover:border-emerald-500 transition-colors cursor-pointer group shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle className="text-base flex items-center gap-2">
                             <Calendar className="h-5 w-5 text-emerald-500" />
-                            Project Timeline
+                            Next Milestone
                         </CardTitle>
+                        <ArrowRight className="h-4 w-4 text-zinc-300 group-hover:text-emerald-500 transition-colors" />
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            {project.milestones.map((milestone, index) => (
-                                <div key={milestone.id} className="flex gap-4">
-                                    <div className="flex flex-col items-center">
-                                        {milestone.status === 'completed' ? (
-                                            <CheckCircle2 className="h-6 w-6 text-emerald-500" />
-                                        ) : milestone.status === 'in_progress' ? (
-                                            <Clock className="h-6 w-6 text-amber-500" />
-                                        ) : (
-                                            <Circle className="h-6 w-6 text-zinc-300" />
-                                        )}
-                                        {index < project.milestones.length - 1 && (
-                                            <div className="mt-1 h-full w-0.5 bg-zinc-200 dark:bg-zinc-800" />
-                                        )}
-                                    </div>
-                                    <div className="flex-1 pb-4">
-                                        <div className="flex items-center justify-between">
-                                            <p className="font-medium">{milestone.name}</p>
-                                            <span className="text-sm text-zinc-500">{milestone.date}</span>
-                                        </div>
-                                        <span
-                                            className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${milestone.status === 'completed'
-                                                    ? 'bg-emerald-100 text-emerald-700'
-                                                    : milestone.status === 'in_progress'
-                                                        ? 'bg-amber-100 text-amber-700'
-                                                        : 'bg-zinc-100 text-zinc-600'
-                                                }`}
-                                        >
-                                            {milestone.status.replace('_', ' ')}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
+                        <p className="text-sm text-zinc-500">View upcoming deliverables and timeline.</p>
                     </CardContent>
                 </Card>
+            </Link>
 
-                {/* Deliverables & Invoices */}
-                <div className="space-y-6">
-                    {/* Deliverables */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-base">
-                                <Download className="h-5 w-5 text-blue-500" />
-                                Deliverables
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2">
-                                {project.deliverables.map((item) => (
-                                    <div
-                                        key={item.id}
-                                        className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800"
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <FileText className="h-4 w-4 text-zinc-400" />
-                                            <span className="text-sm">{item.name}</span>
-                                        </div>
-                                        {item.status === 'ready' ? (
-                                            <Button variant="ghost" size="sm">
-                                                <Download className="h-4 w-4" />
-                                            </Button>
-                                        ) : (
-                                            <span className="text-xs text-zinc-400">Pending</span>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Invoices */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-base">
-                                <FileText className="h-5 w-5 text-emerald-500" />
-                                Invoices
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-2">
-                                {project.invoices.map((invoice) => (
-                                    <div
-                                        key={invoice.id}
-                                        className="flex items-center justify-between rounded-lg border border-zinc-200 px-3 py-2 dark:border-zinc-800"
-                                    >
-                                        <div>
-                                            <p className="text-sm font-medium">{invoice.number}</p>
-                                            <p className="text-xs text-zinc-500">{invoice.date}</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm font-medium">
-                                                ${invoice.amount.toLocaleString()}
-                                            </p>
-                                            <span
-                                                className={`text-xs ${invoice.status === 'paid'
-                                                        ? 'text-emerald-600'
-                                                        : 'text-amber-600'
-                                                    }`}
-                                            >
-                                                {invoice.status}
-                                            </span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+            <Link href={`/client/${token}/deliverables`}>
+                <Card className="hover:border-blue-500 transition-colors cursor-pointer group shadow-sm">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle className="text-base flex items-center gap-2">
+                            <Download className="h-5 w-5 text-blue-500" />
+                            Latest Assets
+                        </CardTitle>
+                        <ArrowRight className="h-4 w-4 text-zinc-300 group-hover:text-blue-500 transition-colors" />
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-zinc-500">Download guidelines, logos, and files.</p>
+                    </CardContent>
+                </Card>
+            </Link>
         </div>
     )
 }
