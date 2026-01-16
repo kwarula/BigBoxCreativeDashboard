@@ -65,7 +65,7 @@ export const SOPStepSchema = z.object({
       type: z.enum(['emit_event', 'external_api', 'notification', 'decision']),
       config: z.record(z.unknown()),
     })
-  ),
+  ).optional(),
   success_criteria: z.record(z.unknown()).optional(),
   failure_handling: z
     .object({
@@ -105,7 +105,7 @@ export const SOPEscalationRuleSchema = z.object({
   threshold: z.unknown().optional(),
   escalate_to: z.array(z.string()),
   urgency: z.enum(['low', 'medium', 'high', 'critical']),
-  notification_channels: z.array(z.enum(['email', 'slack', 'sms', 'dashboard'])),
+  notification_channels: z.array(z.enum(['email', 'slack', 'sms', 'dashboard', 'phone'])),
   include_context: z.boolean().default(true),
 });
 
