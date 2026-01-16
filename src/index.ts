@@ -21,6 +21,12 @@ import { AutomationCoverageAgent } from './agents/coverage/AutomationCoverageAge
 import { ClientHealthView } from './projections/client/ClientHealthView.js';
 import { Logger } from './utils/logger.js';
 import { setupEventAPI } from './api/controllers/eventController.js';
+import { setupApprovalAPI } from './api/controllers/approvalController.js';
+import { setupCEOAPI } from './api/controllers/ceoController.js';
+import { setupClientAPI } from './api/controllers/clientController.js';
+import { setupSOPAPI } from './api/controllers/sopController.js';
+import { setupDriftAPI } from './api/controllers/driftController.js';
+import { setupAgentAPI } from './api/controllers/agentController.js';
 
 dotenv.config();
 
@@ -136,6 +142,14 @@ class AutonomicEngine {
 
     // Event API
     setupEventAPI(this.app, this.eventBus, this.eventStore);
+
+    // New API Controllers
+    setupApprovalAPI(this.app);
+    setupCEOAPI(this.app);
+    setupClientAPI(this.app);
+    setupSOPAPI(this.app);
+    setupDriftAPI(this.app);
+    setupAgentAPI(this.app);
 
     // Projections API
     this.app.get('/api/projections/client-health', (req, res) => {
