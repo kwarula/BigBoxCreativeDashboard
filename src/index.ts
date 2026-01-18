@@ -68,13 +68,17 @@ class AutonomicEngine {
     logger.info('Loading SOP definitions');
     await this.sopResolver.initialize();
 
-    // Initialize event store
-    await this.eventStore.initialize();
-
-    // Wire event bus to event store (persist all events)
-    this.eventBus.subscribe(async (event) => {
-      await this.eventStore.append(event);
-    });
+    // Initialize event store (gracefully handle connection failures)
+    try {
+      await this.eventStore.initialize();
+      // Wire event bus to event store (persist all events)
+      this.eventBus.subscribe(async (event) => {
+        await this.eventStore.append(event);
+      });
+    } catch (error) {
+      logger.warn('EventStore initialization failed - running in degraded mode without persistence', { error });
+      logger.warn('API endpoints will be available but data operations may fail');
+    }
 
     // Initialize all agents
     logger.info('Initializing autonomic agents');
@@ -114,7 +118,11 @@ class AutonomicEngine {
     this.projections = [clientHealthView];
 
     for (const projection of this.projections) {
-      await projection.initialize();
+      try {
+        await projection.initialize();
+      } catch (error) {
+        logger.warn('Projection initialization failed - running without historical state', { error });
+      }
     }
 
     // Setup API
