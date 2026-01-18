@@ -3,14 +3,33 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Bell, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
+import { Bell, CheckCircle2, AlertCircle, Loader2, Wifi, WifiOff } from 'lucide-react'
 import { getApprovals, resolveApproval, type Approval } from '@/lib/api'
+import { useEventListener } from '@/hooks/useEventStream'
 
 export default function EmployeeApprovalsPage() {
     const [approvals, setApprovals] = useState<Approval[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [resolving, setResolving] = useState<string | null>(null)
+    const [notification, setNotification] = useState<string | null>(null)
+
+    // Real-time event stream
+    const { isConnected } = useEventListener(
+        ['HUMAN_APPROVAL_REQUESTED', 'APPROVAL_RESOLVED'],
+        (event) => {
+            console.log('Received real-time event:', event.type)
+
+            if (event.type === 'HUMAN_APPROVAL_REQUESTED') {
+                setNotification('New approval request received!')
+                setTimeout(() => setNotification(null), 5000)
+            }
+
+            // Refresh approvals when events occur
+            loadApprovals()
+        },
+        { role: 'employee' }
+    )
 
     useEffect(() => {
         loadApprovals()
@@ -60,8 +79,28 @@ export default function EmployeeApprovalsPage() {
         <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold">Approvals</h1>
-                <p className="text-zinc-500">Items requiring your review and action</p>
+                <p className="text-zinc-500 flex items-center gap-2">
+                    Items requiring your review and action
+                    {isConnected ? (
+                        <span className="inline-flex items-center gap-1 text-xs text-emerald-600">
+                            <Wifi className="h-3 w-3" />
+                            Live
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1 text-xs text-zinc-400">
+                            <WifiOff className="h-3 w-3" />
+                            Offline
+                        </span>
+                    )}
+                </p>
             </div>
+
+            {notification && (
+                <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 flex items-center gap-3 animate-in slide-in-from-top-2">
+                    <Bell className="h-5 w-5 text-emerald-600" />
+                    <p className="text-emerald-900 font-medium">{notification}</p>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 gap-6">
                 <Card>

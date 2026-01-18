@@ -27,6 +27,8 @@ import { setupClientAPI } from './api/controllers/clientController.js';
 import { setupSOPAPI } from './api/controllers/sopController.js';
 import { setupDriftAPI } from './api/controllers/driftController.js';
 import { setupAgentAPI } from './api/controllers/agentController.js';
+import { setupSSEAPI } from './api/controllers/sseController.js';
+import { setupAuthAPI } from './api/controllers/authController.js';
 
 dotenv.config();
 
@@ -136,6 +138,17 @@ class AutonomicEngine {
    * Setup REST API
    */
   private setupAPI(): void {
+    // CORS middleware
+    this.app.use((req, res, next) => {
+      res.header('Access-Control-Allow-Origin', '*');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      if (req.method === 'OPTIONS') {
+        return res.sendStatus(200);
+      }
+      next();
+    });
+
     this.app.use(express.json());
 
     // Health check
@@ -148,6 +161,9 @@ class AutonomicEngine {
       });
     });
 
+    // Authentication API (no auth required)
+    setupAuthAPI(this.app);
+
     // Event API
     setupEventAPI(this.app, this.eventBus, this.eventStore);
 
@@ -158,6 +174,7 @@ class AutonomicEngine {
     setupSOPAPI(this.app);
     setupDriftAPI(this.app);
     setupAgentAPI(this.app);
+    setupSSEAPI(this.app, this.eventBus);
 
     // Projections API
     this.app.get('/api/projections/client-health', (req, res) => {

@@ -2,15 +2,29 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
+import { AlertCircle, CheckCircle2, Loader2, Bell, Wifi, WifiOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { getCEOInterrupts, resolveCEODecision, type CEOInterrupt } from '@/lib/api'
+import { useEventListener } from '@/hooks/useEventStream'
 
 export default function CEOInterruptsPage() {
     const [interrupts, setInterrupts] = useState<CEOInterrupt[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [resolving, setResolving] = useState<string | null>(null)
+    const [notification, setNotification] = useState<string | null>(null)
+
+    // Real-time CEO interrupt alerts
+    const { isConnected } = useEventListener(
+        'CEO_INTERRUPT_REQUIRED',
+        (event) => {
+            console.log('CEO interrupt received:', event)
+            setNotification('⚠️ New high-priority decision required!')
+            setTimeout(() => setNotification(null), 8000)
+            loadInterrupts()
+        },
+        { role: 'ceo' }
+    )
 
     useEffect(() => {
         loadInterrupts()
@@ -53,9 +67,29 @@ export default function CEOInterruptsPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-3xl font-bold text-white">CEO Queue</h1>
-                    <p className="text-zinc-400">Decision-required events from the Autonomic Engine</p>
+                    <p className="text-zinc-400 flex items-center gap-2">
+                        Decision-required events from the Autonomic Engine
+                        {isConnected ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-emerald-400">
+                                <Wifi className="h-3 w-3" />
+                                Live
+                            </span>
+                        ) : (
+                            <span className="inline-flex items-center gap-1 text-xs text-zinc-500">
+                                <WifiOff className="h-3 w-3" />
+                                Offline
+                            </span>
+                        )}
+                    </p>
                 </div>
             </div>
+
+            {notification && (
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4 flex items-center gap-3 animate-in slide-in-from-top-2">
+                    <Bell className="h-5 w-5 text-amber-400" />
+                    <p className="text-amber-200 font-medium">{notification}</p>
+                </div>
+            )}
 
             <Card className="bg-zinc-900 border-zinc-800">
                 <CardHeader>
