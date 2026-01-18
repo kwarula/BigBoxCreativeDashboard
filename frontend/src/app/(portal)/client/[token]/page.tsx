@@ -1,18 +1,10 @@
 'use client'
 
 import { use, useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { ArrowRight, Download, FileText, Calendar } from 'lucide-react'
+import { ArrowRight, Download, Calendar, Activity, TrendingUp, Zap, AlertCircle, Loader2 } from 'lucide-react'
 import Link from 'next/link'
-
-interface Project {
-    id: string
-    name: string
-    progress: number
-    end_date: string
-}
+import { getClientSignals, getClientTrustScore, getClientProjects } from '@/lib/api'
 
 export default function ClientOverviewPage({
     params,
@@ -20,66 +12,181 @@ export default function ClientOverviewPage({
     params: Promise<{ token: string }>
 }) {
     const { token } = use(params)
-    const [project, setProject] = useState<Project | null>(null)
+    const [signals, setSignals] = useState<any>(null)
+    const [trustScore, setTrustScore] = useState<any>(null)
+    const [projects, setProjects] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
-    const supabase = createClient()
+    const [error, setError] = useState<string | null>(null)
+
+    // Use token as client_id for demo purposes
+    const clientId = token
 
     useEffect(() => {
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
-        if (!uuidRegex.test(token)) {
+        loadClientData()
+    }, [clientId])
+
+    const loadClientData = async () => {
+        try {
+            setLoading(true)
+            setError(null)
+
+            const [signalsData, trustData, projectsData] = await Promise.all([
+                getClientSignals(clientId).catch(() => null),
+                getClientTrustScore(clientId).catch(() => null),
+                getClientProjects(clientId).catch(() => null),
+            ])
+
+            setSignals(signalsData)
+            setTrustScore(trustData)
+            setProjects(projectsData?.projects || [])
+        } catch (err) {
+            setError('Failed to load client data. Backend may not be running.')
+            console.error('Failed to load client data:', err)
+        } finally {
             setLoading(false)
-            return
         }
+    }
 
-        const fetchProject = async () => {
-            const { data } = await supabase
-                .from('projects')
-                .select('*')
-                .eq('id', token)
-                .single()
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            </div>
+        )
+    }
 
-            if (data) setProject(data)
-            setLoading(false)
-        }
-
-        fetchProject()
-    }, [token])
-
-    if (loading) return null
-    if (!project) return null
+    if (error) {
+        return (
+            <div className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-lg dark:bg-red-900/20 dark:border-red-800">
+                <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                <div>
+                    <p className="text-sm font-medium text-red-900 dark:text-red-200">{error}</p>
+                    <p className="text-xs text-red-700 dark:text-red-300 mt-1">
+                        Make sure the backend is running on http://localhost:3000
+                    </p>
+                </div>
+            </div>
+        )
+    }
 
     return (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-            {/* Status Summary */}
-            <Card className="lg:col-span-2 shadow-sm">
-                <CardHeader>
-                    <CardTitle className="text-xl">Project Health</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                            <span className="text-zinc-500">Overall Progress</span>
-                            <span className="font-bold text-emerald-600">{project.progress}%</span>
+            {/* Trust Score */}
+            {trustScore && (
+                <Card className="lg:col-span-2 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-xl flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-emerald-500" />
+                            Autonomic Trust Score
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                                <span className="text-zinc-500">Overall Trust</span>
+                                <span className="font-bold text-emerald-600">
+                                    {(trustScore.trust_score * 100).toFixed(0)}%
+                                </span>
+                            </div>
+                            <div className="h-3 w-full rounded-full bg-zinc-100 dark:bg-zinc-800">
+                                <div
+                                    className="h-full rounded-full bg-emerald-500 shadow-sm"
+                                    style={{ width: `${trustScore.trust_score * 100}%` }}
+                                />
+                            </div>
                         </div>
-                        <div className="h-3 w-full rounded-full bg-zinc-100 dark:bg-zinc-800">
-                            <div
-                                className="h-full rounded-full bg-emerald-500 shadow-sm"
-                                style={{ width: `${project.progress}%` }}
-                            />
+                        <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900">
+                                <p className="text-zinc-500">Transparency</p>
+                                <p className="font-bold">
+                                    {(trustScore.components.transparency * 100).toFixed(0)}%
+                                </p>
+                            </div>
+                            <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900">
+                                <p className="text-zinc-500">Reliability</p>
+                                <p className="font-bold">
+                                    {(trustScore.components.reliability * 100).toFixed(0)}%
+                                </p>
+                            </div>
+                            <div className="rounded-lg bg-zinc-50 p-3 dark:bg-zinc-900">
+                                <p className="text-zinc-500">Proactivity</p>
+                                <p className="font-bold">
+                                    {(trustScore.components.proactivity * 100).toFixed(0)}%
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-sm">
-                        <div className="rounded-lg bg-zinc-50 p-3 flex-1 dark:bg-zinc-900">
-                            <p className="text-zinc-500">Estimated Completion</p>
-                            <p className="font-bold">{project.end_date || 'TBD'}</p>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Autonomic Signals */}
+            {signals && (
+                <Card className="lg:col-span-2 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-xl flex items-center gap-2">
+                            <Activity className="h-5 w-5 text-blue-500" />
+                            System Performance
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900">
+                                <p className="text-xs text-zinc-500 mb-1">Automation Level</p>
+                                <p className="text-2xl font-bold text-blue-600">
+                                    {(signals.signals.automation_level * 100).toFixed(0)}%
+                                </p>
+                            </div>
+                            <div className="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900">
+                                <p className="text-xs text-zinc-500 mb-1">Human Touch Points</p>
+                                <p className="text-2xl font-bold">
+                                    {signals.signals.human_touch_points}
+                                </p>
+                            </div>
+                            <div className="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900">
+                                <p className="text-xs text-zinc-500 mb-1">Proactive Actions</p>
+                                <p className="text-2xl font-bold text-emerald-600">
+                                    {signals.signals.proactive_interventions}
+                                </p>
+                            </div>
+                            <div className="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-900">
+                                <p className="text-xs text-zinc-500 mb-1">Avg Response</p>
+                                <p className="text-2xl font-bold">
+                                    {signals.signals.response_time.avg_hours.toFixed(1)}h
+                                </p>
+                            </div>
                         </div>
-                        <div className="rounded-lg bg-zinc-50 p-3 flex-1 dark:bg-zinc-900">
-                            <p className="text-zinc-500">Project Status</p>
-                            <p className="font-bold uppercase text-emerald-600">Active</p>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Active Projects */}
+            {projects.length > 0 && (
+                <Card className="lg:col-span-2 shadow-sm">
+                    <CardHeader>
+                        <CardTitle className="text-xl">Active Projects</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-4">
+                            {projects.map((project) => (
+                                <div
+                                    key={project.id}
+                                    className="flex items-center justify-between p-4 rounded-lg border border-zinc-200 dark:border-zinc-800"
+                                >
+                                    <div>
+                                        <p className="font-semibold">{project.name}</p>
+                                        <p className="text-sm text-zinc-500">
+                                            {project.status} • {project.progress}% complete
+                                        </p>
+                                    </div>
+                                    <div className="text-sm text-zinc-500">
+                                        {(project.automation_rate * 100).toFixed(0)}% automated
+                                    </div>
+                                </div>
+                            ))}
                         </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            )}
 
             {/* Quick Links */}
             <Link href={`/client/${token}/timeline`}>
@@ -87,12 +194,12 @@ export default function ClientOverviewPage({
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-base flex items-center gap-2">
                             <Calendar className="h-5 w-5 text-emerald-500" />
-                            Next Milestone
+                            Timeline & History
                         </CardTitle>
                         <ArrowRight className="h-4 w-4 text-zinc-300 group-hover:text-emerald-500 transition-colors" />
                     </CardHeader>
                     <CardContent>
-                        <p className="text-sm text-zinc-500">View upcoming deliverables and timeline.</p>
+                        <p className="text-sm text-zinc-500">View autonomic actions and timeline.</p>
                     </CardContent>
                 </Card>
             </Link>

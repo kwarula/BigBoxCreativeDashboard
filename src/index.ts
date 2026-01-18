@@ -21,6 +21,12 @@ import { AutomationCoverageAgent } from './agents/coverage/AutomationCoverageAge
 import { ClientHealthView } from './projections/client/ClientHealthView.js';
 import { Logger } from './utils/logger.js';
 import { setupEventAPI } from './api/controllers/eventController.js';
+import { setupApprovalAPI } from './api/controllers/approvalController.js';
+import { setupCEOAPI } from './api/controllers/ceoController.js';
+import { setupClientAPI } from './api/controllers/clientController.js';
+import { setupSOPAPI } from './api/controllers/sopController.js';
+import { setupDriftAPI } from './api/controllers/driftController.js';
+import { setupAgentAPI } from './api/controllers/agentController.js';
 
 dotenv.config();
 
@@ -62,13 +68,17 @@ class AutonomicEngine {
     logger.info('Loading SOP definitions');
     await this.sopResolver.initialize();
 
-    // Initialize event store
-    await this.eventStore.initialize();
-
-    // Wire event bus to event store (persist all events)
-    this.eventBus.subscribe(async (event) => {
-      await this.eventStore.append(event);
-    });
+    // Initialize event store (gracefully handle connection failures)
+    try {
+      await this.eventStore.initialize();
+      // Wire event bus to event store (persist all events)
+      this.eventBus.subscribe(async (event) => {
+        await this.eventStore.append(event);
+      });
+    } catch (error) {
+      logger.warn('EventStore initialization failed - running in degraded mode without persistence', { error });
+      logger.warn('API endpoints will be available but data operations may fail');
+    }
 
     // Initialize all agents
     logger.info('Initializing autonomic agents');
@@ -108,7 +118,11 @@ class AutonomicEngine {
     this.projections = [clientHealthView];
 
     for (const projection of this.projections) {
-      await projection.initialize();
+      try {
+        await projection.initialize();
+      } catch (error) {
+        logger.warn('Projection initialization failed - running without historical state', { error });
+      }
     }
 
     // Setup API
@@ -136,6 +150,14 @@ class AutonomicEngine {
 
     // Event API
     setupEventAPI(this.app, this.eventBus, this.eventStore);
+
+    // New API Controllers
+    setupApprovalAPI(this.app);
+    setupCEOAPI(this.app);
+    setupClientAPI(this.app);
+    setupSOPAPI(this.app);
+    setupDriftAPI(this.app);
+    setupAgentAPI(this.app);
 
     // Projections API
     this.app.get('/api/projections/client-health', (req, res) => {
